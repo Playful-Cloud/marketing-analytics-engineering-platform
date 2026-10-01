@@ -9,7 +9,9 @@ import duckdb
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 # Source CSV
-SOURCE_FILE = PROJECT_ROOT / "data" / "raw" / "marketing_campaign_2024.csv"
+SOURCE_FILE = sorted(
+    (PROJECT_ROOT / "data" / "raw").glob("marketing_campaign_*.csv")
+)
 
 # DuckDB database
 DATABASE_FILE = PROJECT_ROOT / "marketing_analytics.duckdb"
@@ -19,13 +21,26 @@ DATABASE_FILE = PROJECT_ROOT / "marketing_analytics.duckdb"
 # SOURCE VALIDATION
 # --------------------------------------------------
 
-with open(SOURCE_FILE, "r", newline="", encoding="utf-8") as file:
-    reader = csv.reader(file)
+source_columns = None
+source_row_count = 0
 
-    source_columns = next(reader)
-    source_records = list(reader)
+for source_file in SOURCE_FILE:
+    with open(source_file, "r", newline="", encoding="utf-8") as file:
+        reader = csv.reader(file)
 
-source_row_count = len(source_records)
+        columns = next(reader)
+        records = list(reader)
+
+    # Confirm every source file has the same column structure
+    if source_columns is None:
+        source_columns = columns
+    elif columns != source_columns:
+        raise ValueError(
+            f"Schema mismatch detected in source file: {source_file.name}"
+        )
+
+    source_row_count += len(records)
+
 source_column_count = len(source_columns)
 
 
@@ -37,7 +52,7 @@ conn = duckdb.connect(DATABASE_FILE)
 
 duckdb_row_count = conn.execute("""
     SELECT COUNT(*)
-    FROM raw.marketing_campaign_2024
+    FROM raw.marketing_campaign
 """).fetchone()[0]
 
 
@@ -45,13 +60,13 @@ duckdb_column_count = conn.execute("""
     SELECT COUNT(*)
     FROM information_schema.columns
     WHERE table_schema = 'raw'
-      AND table_name = 'marketing_campaign_2024'
+      AND table_name = 'marketing_campaign'
 """).fetchone()[0]
 
 # for Reconciliation / Comparison, fetch all records from DuckDB
 duckdb_records = conn.execute("""
     SELECT *
-    FROM raw.marketing_campaign_2024
+    FROM raw.marketing_campaign
     ORDER BY campaign_id
 """).fetchall()
 
@@ -72,7 +87,7 @@ schema_info = conn.execute("""
         data_type
     FROM information_schema.columns
     WHERE table_schema = 'raw'
-      AND table_name = 'marketing_campaign_2024'
+      AND table_name = 'marketing_campaign'
     ORDER BY ordinal_position
 """).fetchall()
 
@@ -208,7 +223,7 @@ null_counts = conn.execute("""
         COUNT(*) - COUNT(product_category) AS product_category_nulls,
         COUNT(*) - COUNT(device) AS device_nulls,
         COUNT(*) - COUNT(year) AS year_nulls
-    FROM raw.marketing_campaign_2024
+    FROM raw.marketing_campaign
 """).fetchone()
 
 
@@ -236,7 +251,7 @@ duplicate_campaigns = conn.execute("""
     SELECT
         campaign_id,
         COUNT(*) AS record_count
-    FROM raw.marketing_campaign_2024
+    FROM raw.marketing_campaign
     GROUP BY campaign_id
     HAVING COUNT(*) > 1
     ORDER BY record_count DESC, campaign_id
@@ -268,7 +283,7 @@ negative_values = conn.execute("""
         SUM(CASE WHEN conversions < 0 THEN 1 ELSE 0 END) AS negative_conversions,
         SUM(CASE WHEN spend_usd < 0 THEN 1 ELSE 0 END) AS negative_spend,
         SUM(CASE WHEN revenue_usd < 0 THEN 1 ELSE 0 END) AS negative_revenue
-    FROM raw.marketing_campaign_2024
+    FROM raw.marketing_campaign
 """).fetchone()
 
 
@@ -303,7 +318,7 @@ else:
 
 invalid_date_ranges = conn.execute("""
     SELECT COUNT(*)
-    FROM raw.marketing_campaign_2024
+    FROM raw.marketing_campaign
     WHERE start_date > end_date
 """).fetchone()[0]
 
@@ -344,7 +359,7 @@ logic_detail = conn.execute("""
 
         COUNT(*) AS total_records
 
-    FROM raw.marketing_campaign_2024
+    FROM raw.marketing_campaign
 """).fetchone()
 
 
@@ -382,7 +397,7 @@ invalid_examples = conn.execute("""
         impressions,
         clicks,
         conversions
-    FROM raw.marketing_campaign_2024
+    FROM raw.marketing_campaign
     WHERE clicks > impressions
        OR conversions > clicks
     LIMIT 10
@@ -435,7 +450,7 @@ measure_ordering = conn.execute("""
 
         COUNT(*) AS total_records
 
-    FROM raw.marketing_campaign_2024
+    FROM raw.marketing_campaign
 """).fetchone()
 
 
@@ -465,7 +480,7 @@ print(
 reconstruction_check = conn.execute("""
     SELECT
         COUNT(*)
-    FROM raw.marketing_campaign_2024
+    FROM raw.marketing_campaign
     WHERE
         GREATEST(impressions, clicks, conversions)
         >
@@ -526,7 +541,7 @@ corrected_examples = conn.execute("""
         LEAST(impressions, clicks, conversions)
             AS corrected_conversions
 
-    FROM raw.marketing_campaign_2024
+    FROM raw.marketing_campaign
 
     ORDER BY campaign_id
 
@@ -576,7 +591,7 @@ for (
 corrected_funnel_check = conn.execute("""
     SELECT
         COUNT(*)
-    FROM raw.marketing_campaign_2024
+    FROM raw.marketing_campaign
     WHERE
         (
             impressions

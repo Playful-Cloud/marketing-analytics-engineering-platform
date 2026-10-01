@@ -1,0 +1,51 @@
+# unit test
+
+
+version: 2
+
+unit_tests:
+
+  - name: test_int_campaign_performance_measure_reassignment
+
+    description: "Tests that the largest source measure becomes impressions, the middle value becomes clicks, and the smallest value becomes conversions."
+
+    model: int_campaign_performance
+
+    given:
+
+      - input: ref('stg_campaign_performance')
+        rows:
+          - campaign_id: "UNIT_TEST_001"
+            campaign_name: "Unit Test Campaign"
+            start_date: "2024-01-01"
+            end_date: "2024-01-31"
+            channel: "Search"
+            region: "North America"
+            impressions: 10
+            clicks: 100
+            conversions: 50
+            spend_usd: 100.0
+            revenue_usd: 200.0
+            target_audience: "Adults"
+            product_category: "Electronics"
+            device: "Desktop"
+            year: 2024
+
+    expect:
+
+      rows:
+        - campaign_id: "UNIT_TEST_001"
+          campaign_name: "Unit Test Campaign"
+          start_date: "2024-01-01"
+          end_date: "2024-01-31"
+          channel: "Search"
+          region: "North America"
+          impressions: 100
+          clicks: 50
+          conversions: 10
+          spend_usd: 100.0
+          revenue_usd: 200.0
+          target_audience: "Adults"
+          product_category: "Electronics"
+          device: "Desktop"
+          year: 2024

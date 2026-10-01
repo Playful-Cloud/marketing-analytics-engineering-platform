@@ -1,0 +1,8 @@
+# Exluding this file from git tracking to avoid committing sensitive information and unnecessary files.
+
+target/
+dbt_packages/
+logs/
+.env
+*.duckdb
+*.duckdb.wal
