@@ -127,4 +127,3 @@ These findings are descriptive and depend on the validity of the underlying camp
 - Python, DuckDB, and the required project models must be available in the local environment.
 - Run the notebook from top to bottom to regenerate the analytical outputs.
 - The original SQL reference file uses PostgreSQL-style schema references, while notebook execution uses DuckDB objects. Follow the notebook's documented environment setup when reproducing results.
-
