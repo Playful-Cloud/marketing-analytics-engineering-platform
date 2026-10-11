@@ -1,4 +1,4 @@
-# dbt: nalytics Engineering
+# dbt: Analytics Engineering
 
 ## Overview
 
